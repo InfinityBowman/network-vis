@@ -1,5 +1,5 @@
-import { useState } from "react"
-import type { NetworkNode, SignalType } from "@/types"
+import { useState, useMemo } from "react"
+import type { NetworkNode, SignalType, SubnetInfo } from "@/types"
 import { SIGNAL_COLORS, SIGNAL_LABELS } from "@/visualization/colors"
 import {
   Wifi,
@@ -25,6 +25,9 @@ interface SidebarProps {
   onToggleFilter: (type: SignalType) => void
   onNodeClick: (node: NetworkNode) => void
   selectedNode: NetworkNode | null
+  showSubnetGroups?: boolean
+  subnets?: SubnetInfo[]
+  getSubnetForIp?: (ip: string) => SubnetInfo | undefined
 }
 
 export function Sidebar({
@@ -33,6 +36,9 @@ export function Sidebar({
   onToggleFilter,
   onNodeClick,
   selectedNode,
+  showSubnetGroups = false,
+  subnets = [],
+  getSubnetForIp,
 }: SidebarProps) {
   const [search, setSearch] = useState("")
 
@@ -55,6 +61,41 @@ export function Sidebar({
     )
     .sort((a, b) => a.name.localeCompare(b.name))
 
+  // Compute grouped view when subnet grouping is on
+  const { nonLanNodes, subnetGrouped, unassignedLan } = useMemo(() => {
+    if (!showSubnetGroups || !getSubnetForIp || !filters.has("lan")) {
+      return { nonLanNodes: visibleNodes, subnetGrouped: new Map<string, { subnet: SubnetInfo; nodes: NetworkNode[] }>(), unassignedLan: [] as NetworkNode[] }
+    }
+
+    const nonLan: NetworkNode[] = []
+    const grouped = new Map<string, { subnet: SubnetInfo; nodes: NetworkNode[] }>()
+    const unassigned: NetworkNode[] = []
+
+    for (const node of visibleNodes) {
+      if (node.signalType !== "lan") {
+        nonLan.push(node)
+        continue
+      }
+      if (!node.ip) {
+        unassigned.push(node)
+        continue
+      }
+      const subnet = getSubnetForIp(node.ip)
+      if (!subnet) {
+        unassigned.push(node)
+        continue
+      }
+      let group = grouped.get(subnet.cidr)
+      if (!group) {
+        group = { subnet, nodes: [] }
+        grouped.set(subnet.cidr, group)
+      }
+      group.nodes.push(node)
+    }
+
+    return { nonLanNodes: nonLan, subnetGrouped: grouped, unassignedLan: unassigned }
+  }, [visibleNodes, showSubnetGroups, getSubnetForIp, filters])
+
   const filterTypes: SignalType[] = [
     "wifi",
     "lan",
@@ -62,6 +103,8 @@ export function Sidebar({
     "bonjour",
     "connection",
   ]
+
+  const showGrouped = showSubnetGroups && getSubnetForIp && filters.has("lan") && subnetGrouped.size > 0
 
   return (
     <aside className="w-72 h-full flex flex-col bg-card border-r border-border overflow-hidden">
@@ -117,45 +160,133 @@ export function Sidebar({
 
       {/* Node List */}
       <div className="flex-1 overflow-y-auto">
-        {visibleNodes.map((node) => (
-          <button
-            key={node.id}
-            onClick={() => onNodeClick(node)}
-            className={`flex items-center gap-2 w-full px-4 py-2 text-left text-xs border-b border-border/50 transition-colors hover:bg-accent/50 ${
-              selectedNode?.id === node.id ? "bg-accent" : ""
-            }`}
-          >
-            <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: SIGNAL_COLORS[node.signalType] }}
+        {showGrouped ? (
+          <>
+            {/* Non-LAN nodes flat */}
+            {nonLanNodes.map((node) => (
+              <NodeListItem
+                key={node.id}
+                node={node}
+                selected={selectedNode?.id === node.id}
+                onClick={() => onNodeClick(node)}
+              />
+            ))}
+
+            {/* Subnet groups */}
+            {Array.from(subnetGrouped.entries())
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([cidr, group]) => (
+                <div key={cidr}>
+                  <div className="px-4 py-2 border-b border-border/50 bg-teal-500/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-teal-500/50 flex-shrink-0" />
+                      <span className="text-[10px] font-mono text-teal-400/80 flex-1">
+                        {cidr} ({group.subnet.interface})
+                      </span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {group.nodes.length}
+                      </span>
+                    </div>
+                  </div>
+                  {group.nodes.map((node) => (
+                    <NodeListItem
+                      key={node.id}
+                      node={node}
+                      selected={selectedNode?.id === node.id}
+                      onClick={() => onNodeClick(node)}
+                      indented
+                    />
+                  ))}
+                </div>
+              ))}
+
+            {/* Unassigned LAN nodes */}
+            {unassignedLan.length > 0 && (
+              <div>
+                <div className="px-4 py-2 border-b border-border/50 bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/50 flex-shrink-0" />
+                    <span className="text-[10px] font-mono text-muted-foreground flex-1">
+                      Other
+                    </span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {unassignedLan.length}
+                    </span>
+                  </div>
+                </div>
+                {unassignedLan.map((node) => (
+                  <NodeListItem
+                    key={node.id}
+                    node={node}
+                    selected={selectedNode?.id === node.id}
+                    onClick={() => onNodeClick(node)}
+                    indented
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          visibleNodes.map((node) => (
+            <NodeListItem
+              key={node.id}
+              node={node}
+              selected={selectedNode?.id === node.id}
+              onClick={() => onNodeClick(node)}
             />
-            <div className="flex-1 min-w-0">
-              <div className="truncate text-foreground">{node.name}</div>
-              {node.ip && (
-                <div className="text-muted-foreground font-mono truncate">
-                  {node.ip}
-                </div>
-              )}
-              {node.signalType === 'lan' && node.productName && (
-                <div className="text-[10px] text-muted-foreground truncate capitalize">
-                  {node.productName}
-                </div>
-              )}
-            </div>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                node.status === "active"
-                  ? "bg-green-500/20 text-green-400"
-                  : node.status === "stale"
-                    ? "bg-yellow-500/20 text-yellow-400"
-                    : "bg-red-500/20 text-red-400"
-              }`}
-            >
-              {node.status}
-            </span>
-          </button>
-        ))}
+          ))
+        )}
       </div>
     </aside>
+  )
+}
+
+function NodeListItem({
+  node,
+  selected,
+  onClick,
+  indented = false,
+}: {
+  node: NetworkNode
+  selected: boolean
+  onClick: () => void
+  indented?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 w-full ${indented ? "pl-7 pr-4" : "px-4"} py-2 text-left text-xs border-b border-border/50 transition-colors hover:bg-accent/50 ${
+        selected ? "bg-accent" : ""
+      }`}
+    >
+      <div
+        className="w-2 h-2 rounded-full flex-shrink-0"
+        style={{ backgroundColor: SIGNAL_COLORS[node.signalType] }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="truncate text-foreground">{node.name}</div>
+        {node.ip && (
+          <div className="text-muted-foreground font-mono truncate">
+            {node.ip}
+          </div>
+        )}
+        {node.signalType === "lan" && node.productName && (
+          <div className="text-[10px] text-muted-foreground truncate capitalize">
+            {node.productName}
+          </div>
+        )}
+      </div>
+      <span
+        className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+          node.status === "active"
+            ? "bg-green-500/20 text-green-400"
+            : node.status === "stale"
+              ? "bg-yellow-500/20 text-yellow-400"
+              : "bg-red-500/20 text-red-400"
+        }`}
+      >
+        {node.status}
+      </span>
+    </button>
   )
 }

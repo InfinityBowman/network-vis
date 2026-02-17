@@ -157,3 +157,12 @@ button, input, a, select, [role="button"] {
 .pulse-ring {
   animation: pulse-ring 2s ease-in-out infinite;
 }
+
+/* Traffic flow animation for active edges */
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+.edge-flowing {
+  animation: dash-flow var(--flow-duration, 1s) linear infinite;
+}

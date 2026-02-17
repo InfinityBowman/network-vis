@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron';
-import type { ScannerFullState, ScannerUpdate, ThisDeviceNode, LanDeviceNode, BonjourServiceNode } from '../types';
+import type { ScannerFullState, ScannerUpdate, ThisDeviceNode, LanDeviceNode, BonjourServiceNode, PacketEvent, PacketScannerStatus, NetworkEdge, NetworkNode } from '../types';
 import { NetworkState } from './state';
 import { ArpScanner } from '../scanners/arp';
 import { WifiScanner } from '../scanners/wifi';
@@ -9,12 +9,17 @@ import { ConnectionsScanner } from '../scanners/connections';
 import type { BaseScanner, ScanResult } from '../scanners/base';
 import { hostname, networkInterfaces } from 'os';
 import { DeviceFingerprinter } from '../fingerprinting/fingerprinter';
+import { PacketScanner } from '../scanners/packet';
+import { TopologyScanner } from '../scanners/topology';
+import { TrafficScanner } from '../scanners/traffic';
 
 const SCAN_INTERVALS = {
   arp: 5000,
   connections: 3000,
   bluetooth: 8000,
   wifi: 10000,
+  topology: 30000,
+  traffic: 3000,
 };
 
 export class Orchestrator {
@@ -28,6 +33,9 @@ export class Orchestrator {
   private bonjour = new BonjourScanner();
   private connections = new ConnectionsScanner();
   private fingerprinter = new DeviceFingerprinter();
+  private packetScanner = new PacketScanner();
+  private topology = new TopologyScanner();
+  private traffic = new TrafficScanner();
 
   private sendToRenderer(channel: string, data: any): void {
     const windows = BrowserWindow.getAllWindows();
@@ -52,6 +60,8 @@ export class Orchestrator {
     this.schedule(this.connections, SCAN_INTERVALS.connections);
     this.schedule(this.bluetooth, SCAN_INTERVALS.bluetooth);
     this.schedule(this.wifi, SCAN_INTERVALS.wifi);
+    this.schedule(this.topology, SCAN_INTERVALS.topology);
+    this.schedule(this.traffic, SCAN_INTERVALS.traffic);
 
     // Lifecycle tick every 5s
     this.timers.push(setInterval(() => {
@@ -67,6 +77,8 @@ export class Orchestrator {
       this.runScanner(this.connections),
       this.runScanner(this.bluetooth),
       this.runScanner(this.wifi),
+      this.runScanner(this.topology),
+      this.runScanner(this.traffic),
     ]);
 
     console.log('[Orchestrator] All scanners started');
@@ -76,6 +88,7 @@ export class Orchestrator {
     for (const t of this.timers) clearInterval(t);
     this.timers = [];
     this.bonjour.stop?.();
+    this.packetScanner.stop?.();
   }
 
   pause(): void { this.paused = true; }
@@ -84,8 +97,8 @@ export class Orchestrator {
   getFullState(): ScannerFullState {
     return {
       type: 'full_state',
-      nodes: this.state.getNodes(),
-      edges: this.state.getEdges(),
+      nodes: this.enrichNodes(this.state.getNodes()),
+      edges: this.enrichEdges(this.state.getEdges()),
       timestamp: Date.now(),
     };
   }
@@ -93,6 +106,7 @@ export class Orchestrator {
   /** Send full state to renderer (called on window ready) */
   sendFullState(): void {
     this.sendToRenderer('scanner:full-state', this.getFullState());
+    this.sendToRenderer('topology:update', this.topology.getSubnets());
   }
 
   async scanNow(scannerName?: string): Promise<void> {
@@ -102,6 +116,8 @@ export class Orchestrator {
       bluetooth: this.bluetooth,
       bonjour: this.bonjour,
       connections: this.connections,
+      topology: this.topology,
+      traffic: this.traffic,
     };
 
     if (scannerName && scanners[scannerName]) {
@@ -110,6 +126,75 @@ export class Orchestrator {
       await Promise.allSettled(
         Object.values(scanners).map(s => this.runScanner(s))
       );
+    }
+  }
+
+  // === Packet Capture (DPI) ===
+
+  async startPacketCapture(iface?: string): Promise<{ success: boolean; error?: string }> {
+    if (this.packetScanner.isCapturing) {
+      await this.packetScanner.stop?.();
+    }
+
+    const status = await this.packetScanner.getStatus();
+    if (!status.available) {
+      return { success: false, error: status.error ?? 'tshark not found' };
+    }
+
+    const targetIface = iface ?? await this.packetScanner.detectDefaultInterface();
+
+    // Validate interface exists
+    const validInterfaces = status.interfaces;
+    if (validInterfaces.length > 0 && !validInterfaces.includes(targetIface)) {
+      return { success: false, error: `Interface ${targetIface} not found. Available: ${validInterfaces.join(', ')}` };
+    }
+
+    this.packetScanner.setInterface(targetIface);
+    this.packetScanner.refreshIndex(this.state.getNodes());
+
+    await this.packetScanner.start?.(
+      (/* flush signal */) => { this.enrichProtocols(); },
+      (event) => { this.sendToRenderer('packet:event', event); }
+    );
+
+    return { success: true };
+  }
+
+  async stopPacketCapture(): Promise<{ success: boolean }> {
+    await this.packetScanner.stop?.();
+    return { success: true };
+  }
+
+  async getPacketStatus(): Promise<PacketScannerStatus> {
+    return this.packetScanner.getStatus();
+  }
+
+  getPacketEvents(): PacketEvent[] {
+    return this.packetScanner.getEvents();
+  }
+
+  private enrichProtocols(): void {
+    this.packetScanner.refreshIndex(this.state.getNodes());
+
+    const protocolsByIp = this.packetScanner.getProtocolsByIp();
+    const bytesByIp = this.packetScanner.getBytesByIp();
+    const packetsByIp = this.packetScanner.getPacketsByIp();
+
+    let anyEnriched = false;
+    for (const node of this.state.getNodes()) {
+      if (!node.ip) continue;
+      const protocols = protocolsByIp.get(node.ip);
+      if (!protocols) continue;
+
+      const totalBytes = bytesByIp.get(node.ip) ?? 0;
+      const totalPackets = packetsByIp.get(node.ip) ?? 0;
+
+      this.state.upsertNode({ ...node, protocols, totalBytes, totalPackets });
+      anyEnriched = true;
+    }
+
+    if (anyEnriched) {
+      this.pushUpdate([]);
     }
   }
 
@@ -156,6 +241,14 @@ export class Orchestrator {
       if (scanner.name === 'arp' || scanner.name === 'bonjour') {
         this.classify();
       }
+      // Refresh packet scanner's IP index when new devices are discovered
+      if (this.packetScanner.isCapturing && scanner.name === 'arp') {
+        this.packetScanner.refreshIndex(this.state.getNodes());
+      }
+      // Broadcast subnet topology after topology scans
+      if (scanner.name === 'topology') {
+        this.pushSubnetUpdate();
+      }
       this.pushUpdate([]);
     } catch (err) {
       console.error(`[${scanner.name}] error:`, err);
@@ -182,14 +275,47 @@ export class Orchestrator {
     }
   }
 
+  private pushSubnetUpdate(): void {
+    this.sendToRenderer('topology:update', this.topology.getSubnets());
+  }
+
   private pushUpdate(removed: string[]): void {
     const msg: ScannerUpdate = {
       type: 'node_update',
-      nodes: this.state.getNodes(),
-      edges: this.state.getEdges(),
+      nodes: this.enrichNodes(this.state.getNodes()),
+      edges: this.enrichEdges(this.state.getEdges()),
       removed,
       timestamp: Date.now(),
     };
     this.sendToRenderer('scanner:update', msg);
+  }
+
+  /** Enrich edges with traffic rates at the IPC boundary (not stored in state) */
+  private enrichEdges(edges: NetworkEdge[]): NetworkEdge[] {
+    const rates = this.traffic.getRates();
+    if (rates.size === 0) return edges;
+
+    return edges.map(edge => {
+      // Edge target is a connection node ID matching traffic scanner keys
+      const rate = rates.get(edge.target) || rates.get(edge.source);
+      if (rate) {
+        return { ...edge, ...rate };
+      }
+      return edge;
+    });
+  }
+
+  /** Enrich connection nodes with traffic rates at the IPC boundary */
+  private enrichNodes(nodes: NetworkNode[]): NetworkNode[] {
+    const rates = this.traffic.getRates();
+    if (rates.size === 0) return nodes;
+
+    return nodes.map(node => {
+      const rate = rates.get(node.id);
+      if (rate) {
+        return { ...node, ...rate };
+      }
+      return node;
+    });
   }
 }

@@ -82,3 +82,43 @@ React hooks → `window.electron.*` (preload bridge) → IPC handlers (`src/main
 - Renderer filters nodes/edges by signal type before passing to D3
 - NetworkCanvas exposes zoom controls via `useImperativeHandle` ref
 - Location Services: `NSLocationWhenInUseUsageDescription` in electron-builder mac config
+
+## Spec Documentation (`docs/`)
+
+The `docs/` directory contains specification documents that describe the system in detail:
+
+- **`SPEC.md`** — Product specification: capabilities, discovery matrix, fingerprinting, visualization modes, lifecycle, non-functional requirements
+- **`ARCHITECTURE.md`** — Architecture specification: process model, data flow, IPC protocol, state management, node identity, build system, design decisions
+- **`TYPES.md`** — Type specification: all TypeScript interfaces, union types, visual constants, edge creation rules
+- **`SCANNERS.md`** — Scanner specification: each scanner's system command, parsing logic, field extraction, error handling, OUI database, fingerprinting process
+- **`UI.md`** — UI & renderer specification: component tree, app state, hooks, D3 simulation, layout modes, node rendering, styling
+
+### Keeping Spec Docs Up to Date
+
+**When making changes to the codebase, you MUST update the relevant spec docs to reflect those changes.** This includes:
+
+- **New features**: Add to `SPEC.md` (capabilities), `ARCHITECTURE.md` (data flow if applicable), and the relevant detail doc.
+- **New/modified types**: Update `TYPES.md` with the new interfaces, fields, or union members.
+- **New/modified scanners**: Update `SCANNERS.md` with the scanner's command, parsing, and output.
+- **New/modified components or hooks**: Update `UI.md` with the component's props, behavior, and position in the tree.
+- **Architectural changes** (new IPC channels, state management changes, new processes): Update `ARCHITECTURE.md`.
+- **Refactors**: If a refactor changes file locations, data flow, or public interfaces, update all affected spec docs.
+
+Spec docs should describe *what the system does and how*, not aspirational features. Only document implemented behavior.
+
+## Browser Automation (Testing)
+
+Use [agent-browser](https://github.com/vercel/agent-browser) to interact with the Electron renderer for automated testing:
+
+```bash
+pnpm dev:debug          # Start electron-vite dev with CDP on port 9222
+agent-browser connect 9222  # Connect agent-browser to the Electron window
+```
+
+Key agent-browser commands:
+- `snapshot` — dump the accessibility tree (find `@ref` handles for elements)
+- `screenshot <path>` — save a screenshot of the current window
+- `click @ref` — click an element by its accessibility ref
+- `hover @ref` — hover an element by its accessibility ref
+
+Requires `agent-browser` installed globally: `pnpm add -g agent-browser`

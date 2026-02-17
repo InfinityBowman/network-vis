@@ -2,6 +2,7 @@ import * as d3 from "d3"
 import type { SignalType } from "@/types"
 import { getNodeColor } from "./colors"
 import { getDeviceIconPath } from "./device-icons"
+import { getProtocolColor } from "./protocol-colors"
 
 export interface SimNode extends d3.SimulationNodeDatum {
   id: string
@@ -15,6 +16,7 @@ export interface SimNode extends d3.SimulationNodeDatum {
 export interface SimEdge extends d3.SimulationLinkDatum<SimNode> {
   id: string
   type: string
+  bytesPerSec?: number
 }
 
 export function getNodeRadius(node: SimNode): number {
@@ -34,22 +36,25 @@ export function renderNode(
     const color = getNodeColor(d.signalType)
     const r = getNodeRadius(d)
 
+    // Visual wrapper — scaled by semantic zoom independently from labels
+    const visual = g.append("g").attr("class", "node-visual")
+
     if (d.signalType === "this_device") {
       // Pulsing center circle
-      g.append("circle")
+      visual.append("circle")
         .attr("r", r)
         .attr("fill", color)
         .attr("opacity", 0.15)
         .attr("class", "pulse-ring")
 
-      g.append("circle")
+      visual.append("circle")
         .attr("r", r * 0.7)
         .attr("fill", color)
         .attr("filter", "url(#glow)")
         .attr("opacity", 0.9)
     } else if (d.signalType === "lan") {
       // Rounded rect
-      g.append("rect")
+      visual.append("rect")
         .attr("x", -r)
         .attr("y", -r * 0.7)
         .attr("width", r * 2)
@@ -59,13 +64,13 @@ export function renderNode(
         .attr("filter", d.status === "active" ? "url(#glow)" : null)
     } else if (d.signalType === "bonjour") {
       // Diamond
-      g.append("polygon")
+      visual.append("polygon")
         .attr("points", `0,${-r} ${r},0 0,${r} ${-r},0`)
         .attr("fill", color)
         .attr("filter", d.status === "active" ? "url(#glow)" : null)
     } else {
       // Circle (wifi, bluetooth, connection)
-      g.append("circle")
+      visual.append("circle")
         .attr("r", r)
         .attr("fill", color)
         .attr("filter", d.status === "active" ? "url(#glow)" : null)
@@ -79,7 +84,7 @@ export function renderNode(
         const badgeX = r + 2
         const badgeY = -r * 0.5
 
-        g.append("circle")
+        visual.append("circle")
           .attr("cx", badgeX)
           .attr("cy", badgeY)
           .attr("r", badgeR)
@@ -87,7 +92,7 @@ export function renderNode(
           .attr("stroke", color)
           .attr("stroke-width", 1)
 
-        g.append("path")
+        visual.append("path")
           .attr("d", iconPath)
           .attr(
             "transform",
@@ -102,17 +107,104 @@ export function renderNode(
       }
     }
 
-    // Label
+    // Protocol ring (DPI enrichment)
+    const protocols = d.protocols as Record<string, number> | undefined
+    if (protocols && Object.keys(protocols).length > 0) {
+      renderProtocolRing(visual, r, protocols)
+    }
+
+    // Primary label (outside visual group — scaled independently by semantic zoom)
+    const primaryOffset = protocols ? 20 : 14
     if (d.signalType !== "connection") {
       g.append("text")
-        .attr("dy", r + 14)
+        .attr("class", "primary-label")
+        .attr("dy", r + primaryOffset)
+        .attr("data-r", r)
+        .attr("data-offset", primaryOffset)
         .attr("text-anchor", "middle")
         .attr("fill", "#94a3b8")
-        .attr("font-size", "10px")
+        .attr("font-size", "11px")
         .attr("pointer-events", "none")
-        .text(
-          d.name.length > 20 ? d.name.slice(0, 18) + "..." : d.name
-        )
+        .text(d.name.length > 20 ? d.name.slice(0, 18) + "..." : d.name)
+
+      // Secondary detail (IP/MAC) — revealed by semantic zoom
+      const detail = getNodeDetailText(d)
+      if (detail) {
+        const detailOffset = protocols ? 33 : 27
+        g.append("text")
+          .attr("class", "detail-label")
+          .attr("dy", r + detailOffset)
+          .attr("data-r", r)
+          .attr("data-offset", detailOffset)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#64748b")
+          .attr("font-size", "9px")
+          .attr("pointer-events", "none")
+          .attr("opacity", 0)
+          .text(detail)
+      }
+    } else {
+      // Connection label — revealed by semantic zoom
+      g.append("text")
+        .attr("class", "connection-label")
+        .attr("dy", r + 10)
+        .attr("data-r", r)
+        .attr("data-offset", 10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#64748b")
+        .attr("font-size", "9px")
+        .attr("pointer-events", "none")
+        .attr("opacity", 0)
+        .text(d.name.length > 24 ? d.name.slice(0, 22) + "..." : d.name)
     }
   })
+}
+
+function getNodeDetailText(d: SimNode): string {
+  const ip = d.ip as string | undefined
+  const mac = d.mac as string | undefined
+  if (ip) return ip
+  if (mac) return mac
+  return ""
+}
+
+export function renderProtocolRing(
+  g: d3.Selection<SVGGElement, any, any, unknown>,
+  nodeRadius: number,
+  protocols: Record<string, number>,
+  insertBeforeText = false
+): void {
+  const entries = Object.entries(protocols).sort(([, a], [, b]) => b - a)
+  const total = entries.reduce((sum, [, count]) => sum + count, 0)
+  if (total === 0) return
+
+  const ringInner = nodeRadius + 4
+  const ringOuter = nodeRadius + 8
+
+  const arc = d3
+    .arc<d3.PieArcDatum<{ name: string; value: number }>>()
+    .innerRadius(ringInner)
+    .outerRadius(ringOuter)
+
+  const pie = d3
+    .pie<{ name: string; value: number }>()
+    .value((d) => d.value)
+    .sort(null)
+    .padAngle(0.04)
+
+  const data = entries.map(([name, value]) => ({ name, value }))
+  const arcs = pie(data)
+
+  const ringGroup = (insertBeforeText ? g.insert("g", "text") : g.append("g"))
+    .attr("class", "protocol-ring")
+    .attr("pointer-events", "none")
+
+  ringGroup
+    .selectAll("path")
+    .data(arcs)
+    .enter()
+    .append("path")
+    .attr("d", arc as any)
+    .attr("fill", (d) => getProtocolColor(d.data.name))
+    .attr("opacity", 0.85)
 }

@@ -10,9 +10,17 @@ declare global {
         scanNow: (name?: string) => Promise<any>
         getFullState: () => Promise<any>
       }
+      packet: {
+        start: (options?: { interface?: string }) => Promise<{ success: boolean; error?: string }>
+        stop: () => Promise<{ success: boolean }>
+        status: () => Promise<import("@/types").PacketScannerStatus>
+        getEvents: () => Promise<import("@/types").PacketEvent[]>
+      }
       on: {
         scannerUpdate: (cb: (data: any) => void) => () => void
         scannerFullState: (cb: (data: any) => void) => () => void
+        packetEvent: (cb: (data: import("@/types").PacketEvent) => void) => () => void
+        topologyUpdate: (cb: (data: import("@/types").SubnetInfo[]) => void) => () => void
       }
     }
   }

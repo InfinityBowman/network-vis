@@ -8,6 +8,13 @@ const electronAPI = {
     getFullState: () => ipcRenderer.invoke('scanner:get-full-state'),
   },
 
+  packet: {
+    start: (options?: { interface?: string }) => ipcRenderer.invoke('packet:start', options),
+    stop: () => ipcRenderer.invoke('packet:stop'),
+    status: () => ipcRenderer.invoke('packet:status'),
+    getEvents: () => ipcRenderer.invoke('packet:get-events'),
+  },
+
   on: {
     scannerUpdate: (callback: (data: any) => void) => {
       const handler = (_: any, data: any) => callback(data);
@@ -18,6 +25,16 @@ const electronAPI = {
       const handler = (_: any, data: any) => callback(data);
       ipcRenderer.on('scanner:full-state', handler);
       return () => ipcRenderer.removeListener('scanner:full-state', handler);
+    },
+    packetEvent: (callback: (data: any) => void) => {
+      const handler = (_: any, data: any) => callback(data);
+      ipcRenderer.on('packet:event', handler);
+      return () => ipcRenderer.removeListener('packet:event', handler);
+    },
+    topologyUpdate: (callback: (data: any) => void) => {
+      const handler = (_: any, data: any) => callback(data);
+      ipcRenderer.on('topology:update', handler);
+      return () => ipcRenderer.removeListener('topology:update', handler);
     },
   },
 };

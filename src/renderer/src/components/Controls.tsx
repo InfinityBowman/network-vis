@@ -8,6 +8,9 @@ import {
   Pause,
   Play,
   RefreshCw,
+  Radio,
+  GitBranch,
+  Activity,
 } from "lucide-react"
 
 interface ControlsProps {
@@ -20,6 +23,12 @@ interface ControlsProps {
   onZoomOut: () => void
   onResetZoom: () => void
   connected: boolean
+  packetCapturing: boolean
+  onToggleCapture: () => void
+  showSubnetGroups: boolean
+  onToggleSubnetGroups: () => void
+  showTrafficFlow: boolean
+  onToggleTrafficFlow: () => void
 }
 
 export function Controls({
@@ -32,6 +41,12 @@ export function Controls({
   onZoomOut,
   onResetZoom,
   connected,
+  packetCapturing,
+  onToggleCapture,
+  showSubnetGroups,
+  onToggleSubnetGroups,
+  showTrafficFlow,
+  onToggleTrafficFlow,
 }: ControlsProps) {
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card/90 backdrop-blur border border-border rounded-lg px-2 py-1.5 shadow-lg">
@@ -56,6 +71,34 @@ export function Controls({
         ) : (
           <LayoutGrid className="w-4 h-4" />
         )}
+      </button>
+
+      {/* Subnet grouping toggle */}
+      <button
+        onClick={onToggleSubnetGroups}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors ${
+          showSubnetGroups
+            ? "bg-teal-500/20 text-teal-400 hover:bg-teal-500/30"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
+        title={showSubnetGroups ? "Hide subnet groups" : "Show subnet groups"}
+      >
+        <GitBranch className="w-3.5 h-3.5" />
+        <span>Subnets</span>
+      </button>
+
+      {/* Traffic flow toggle */}
+      <button
+        onClick={onToggleTrafficFlow}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors ${
+          showTrafficFlow
+            ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
+        title={showTrafficFlow ? "Hide traffic flow" : "Show traffic flow"}
+      >
+        <Activity className="w-3.5 h-3.5" />
+        <span>Traffic</span>
       </button>
 
       <div className="w-px h-5 bg-border mx-1" />
@@ -103,6 +146,22 @@ export function Controls({
         title="Scan now"
       >
         <RefreshCw className="w-4 h-4" />
+      </button>
+
+      <div className="w-px h-5 bg-border mx-1" />
+
+      {/* DPI capture */}
+      <button
+        onClick={onToggleCapture}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors ${
+          packetCapturing
+            ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
+        title={packetCapturing ? "Stop packet capture" : "Start packet capture (DPI)"}
+      >
+        <Radio className="w-3.5 h-3.5" />
+        <span>{packetCapturing ? "Stop DPI" : "DPI"}</span>
       </button>
     </div>
   )
