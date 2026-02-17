@@ -1,0 +1,187 @@
+[
+  {
+    "id": "apple-tv",
+    "deviceType": "media-player",
+    "productName": "Apple TV",
+    "iconKey": "tv",
+    "vendorPatterns": ["Apple"],
+    "serviceTypes": ["_airplay._tcp", "_raop._tcp"],
+    "hostnamePatterns": ["Apple.?TV"]
+  },
+  {
+    "id": "chromecast",
+    "deviceType": "media-player",
+    "productName": "Chromecast",
+    "iconKey": "tv",
+    "vendorPatterns": ["Google"],
+    "serviceTypes": ["_googlecast._tcp"]
+  },
+  {
+    "id": "sonos",
+    "deviceType": "speaker",
+    "productName": "Sonos Speaker",
+    "iconKey": "speaker",
+    "serviceTypes": ["_sonos._tcp", "_spotify-connect._tcp"],
+    "vendorPatterns": ["Sonos"]
+  },
+  {
+    "id": "homepod",
+    "deviceType": "speaker",
+    "productName": "HomePod",
+    "iconKey": "speaker",
+    "vendorPatterns": ["Apple"],
+    "serviceTypes": ["_airplay._tcp"],
+    "hostnamePatterns": ["HomePod"]
+  },
+  {
+    "id": "philips-hue",
+    "deviceType": "smart-home",
+    "productName": "Philips Hue Bridge",
+    "iconKey": "lightbulb",
+    "vendorPatterns": ["Philips", "Signify"],
+    "serviceTypes": ["_hue._tcp", "_hap._tcp"],
+    "hostnamePatterns": ["Hue"]
+  },
+  {
+    "id": "homekit-device",
+    "deviceType": "smart-home",
+    "productName": "HomeKit Device",
+    "iconKey": "home",
+    "serviceTypes": ["_homekit._tcp", "_hap._tcp"]
+  },
+  {
+    "id": "generic-printer",
+    "deviceType": "printer",
+    "productName": "Network Printer",
+    "iconKey": "printer",
+    "serviceTypes": ["_ipp._tcp", "_ipps._tcp", "_pdl-datastream._tcp", "_printer._tcp"]
+  },
+  {
+    "id": "hp-printer",
+    "deviceType": "printer",
+    "productName": "HP Printer",
+    "iconKey": "printer",
+    "vendorPatterns": ["Hewlett Packard", "HP Inc"],
+    "serviceTypes": ["_ipp._tcp", "_ipps._tcp"]
+  },
+  {
+    "id": "nas-synology",
+    "deviceType": "storage",
+    "productName": "Synology NAS",
+    "iconKey": "hard-drive",
+    "vendorPatterns": ["Synology"],
+    "serviceTypes": ["_smb._tcp", "_afpovertcp._tcp"]
+  },
+  {
+    "id": "nas-qnap",
+    "deviceType": "storage",
+    "productName": "QNAP NAS",
+    "iconKey": "hard-drive",
+    "vendorPatterns": ["QNAP"],
+    "serviceTypes": ["_smb._tcp", "_afpovertcp._tcp"]
+  },
+  {
+    "id": "generic-nas",
+    "deviceType": "storage",
+    "productName": "NAS Device",
+    "iconKey": "hard-drive",
+    "serviceTypes": ["_smb._tcp", "_afpovertcp._tcp"],
+    "vendorPatterns": ["Western Digital", "Seagate"]
+  },
+  {
+    "id": "raspberry-pi",
+    "deviceType": "computer",
+    "productName": "Raspberry Pi",
+    "iconKey": "server",
+    "vendorPatterns": ["Raspberry Pi"]
+  },
+  {
+    "id": "workstation",
+    "deviceType": "computer",
+    "productName": "Workstation",
+    "iconKey": "monitor",
+    "serviceTypes": ["_workstation._tcp"]
+  },
+  {
+    "id": "ssh-server",
+    "deviceType": "computer",
+    "productName": "SSH Server",
+    "iconKey": "server",
+    "serviceTypes": ["_ssh._tcp"]
+  },
+  {
+    "id": "http-server",
+    "deviceType": "computer",
+    "productName": "Web Server",
+    "iconKey": "server",
+    "serviceTypes": ["_http._tcp", "_https._tcp"]
+  },
+  {
+    "id": "ring-camera",
+    "deviceType": "camera",
+    "productName": "Ring Camera",
+    "iconKey": "camera",
+    "vendorPatterns": ["Ring", "Amazon"],
+    "hostnamePatterns": ["[Rr]ing"]
+  },
+  {
+    "id": "nest-device",
+    "deviceType": "smart-home",
+    "productName": "Nest Device",
+    "iconKey": "home",
+    "vendorPatterns": ["Nest", "Google"],
+    "hostnamePatterns": ["[Nn]est"]
+  },
+  {
+    "id": "roku",
+    "deviceType": "media-player",
+    "productName": "Roku",
+    "iconKey": "tv",
+    "vendorPatterns": ["Roku"],
+    "hostnamePatterns": ["[Rr]oku"]
+  },
+  {
+    "id": "tp-link-smart",
+    "deviceType": "smart-home",
+    "productName": "TP-Link Smart Device",
+    "iconKey": "home",
+    "vendorPatterns": ["TP-Link", "TP-LINK"]
+  },
+  {
+    "id": "espressif-iot",
+    "deviceType": "smart-home",
+    "productName": "IoT Device",
+    "iconKey": "home",
+    "vendorPatterns": ["Espressif"],
+    "hostnamePatterns": ["[Ee][Ss][Pp]"]
+  },
+  {
+    "id": "tuya-iot",
+    "deviceType": "smart-home",
+    "productName": "Tuya Smart Device",
+    "iconKey": "home",
+    "vendorPatterns": ["Tuya"]
+  },
+  {
+    "id": "shelly-iot",
+    "deviceType": "smart-home",
+    "productName": "Shelly Device",
+    "iconKey": "home",
+    "vendorPatterns": ["Shelly", "Allterco"],
+    "hostnamePatterns": ["[Ss]helly"]
+  },
+  {
+    "id": "ubiquiti-infra",
+    "deviceType": "router",
+    "productName": "Ubiquiti Device",
+    "iconKey": "router",
+    "vendorPatterns": ["Ubiquiti"]
+  },
+  {
+    "id": "generic-router",
+    "deviceType": "router",
+    "productName": "Router",
+    "iconKey": "router",
+    "vendorPatterns": ["Cisco", "Netgear", "Linksys", "ASUS", "MikroTik"]
+  }
+]
