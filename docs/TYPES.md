@@ -8,6 +8,10 @@ Canonical types are defined in `src/main/types.ts` and duplicated in `src/render
 type SignalType = 'this_device' | 'wifi' | 'lan' | 'bluetooth' | 'bonjour' | 'connection'
 
 type NodeStatus = 'active' | 'stale' | 'expired'
+
+// OS Fingerprinting
+type OsFamily = 'windows' | 'macos' | 'ios' | 'linux' | 'android' | 'freebsd' | 'unknown'
+type DeviceCategory = 'desktop' | 'laptop' | 'mobile' | 'server' | 'iot' | 'embedded' | 'unknown'
 ```
 
 ## Node Types
@@ -28,6 +32,11 @@ interface NetworkNodeBase {
   protocols?: Record<string, number>  // Protocol name → packet count (populated by PacketScanner DPI)
   totalBytes?: number                 // Total bytes captured for this node
   totalPackets?: number               // Total packets captured for this node
+  // OS fingerprinting (populated by OsEnricher)
+  osFamily?: OsFamily                 // Inferred OS family
+  osVersion?: string                  // OS version string (from nmap)
+  deviceCategory?: DeviceCategory     // Inferred device category
+  osFingerprintConfidence?: number    // 0.0-1.0 confidence score
 }
 ```
 
@@ -333,3 +342,62 @@ interface SimEdge extends d3.SimulationLinkDatum<SimNode> {
 ### Device Icon Keys
 
 Available icon keys for LAN device badges: `monitor`, `tv`, `printer`, `speaker`, `home`, `lightbulb`, `hard-drive`, `server`, `router`, `camera`
+
+### OS Family Colors
+
+| OS Family | Color | Hex |
+|---|---|---|
+| Windows | Blue | `#00a4ef` |
+| macOS | Gray | `#a3a3a3` |
+| iOS | Gray | `#a3a3a3` |
+| Linux | Yellow | `#f8b900` |
+| Android | Green | `#3ddc84` |
+| FreeBSD | Red | `#ab1829` |
+| Unknown | Slate | `#64748b` |
+
+## OS Fingerprinting Types
+
+```typescript
+// Signal source types used by OsFingerprintEngine
+type OsSignalSource = 'ttl' | 'oui' | 'hostname' | 'bonjour' | 'bluetooth_name' | 'nmap'
+
+interface OsSignal {
+  source: OsSignalSource
+  osFamily: OsFamily
+  confidence: number  // 0.0-1.0
+  raw?: string        // raw matched value for diagnostics
+}
+
+interface OsFingerprintResult {
+  osFamily: OsFamily
+  deviceCategory: DeviceCategory
+  confidence: number
+}
+
+// nmap IPC result
+interface NmapScanResult {
+  success: boolean
+  ip: string
+  osFamily?: OsFamily
+  osVersion?: string
+  confidence?: number
+  error?: string
+}
+```
+
+### OS Profiles Database (`src/data/os-profiles.json`)
+
+Each profile matches one OS family and contains optional signal arrays:
+
+```typescript
+interface OsProfile {
+  id: string
+  osFamily: OsFamily
+  ttlRange?: [number, number]          // Acceptable TTL range (e.g., [118, 128] for Windows)
+  ouiPatterns?: string[]               // MAC vendor substrings
+  hostnamePatterns?: string[]           // Regex patterns for hostname matching
+  bonjourServiceTypes?: string[]       // Bonjour service type matches
+  bluetoothNamePatterns?: string[]     // Bluetooth device name patterns
+  nmapOsPatterns?: string[]            // nmap OS detail string patterns
+}
+```

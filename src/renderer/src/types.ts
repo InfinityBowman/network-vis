@@ -20,6 +20,11 @@ export interface NetworkNodeBase {
   protocols?: Record<string, number>;
   totalBytes?: number;
   totalPackets?: number;
+  // OS fingerprinting (populated by OsEnricher)
+  osFamily?: OsFamily;
+  osVersion?: string;
+  deviceCategory?: DeviceCategory;
+  osFingerprintConfidence?: number; // 0.0-1.0
 }
 
 export interface ThisDeviceNode extends NetworkNodeBase {
@@ -139,6 +144,17 @@ export interface PacketScannerStatus {
 
 export interface PacketStartOptions {
   interface?: string;
+}
+
+// === OS Fingerprinting (nmap) ===
+
+export interface NmapScanResult {
+  success: boolean;
+  ip: string;
+  osFamily?: OsFamily;
+  osVersion?: string;
+  confidence?: number;
+  error?: string;
 }
 
 // === Topology / Subnet Mapping ===

@@ -218,14 +218,18 @@ export function useD3Simulation({
     // Render shapes on newly entering nodes
     renderNode(nodeEnter)
     nodeEnter.attr("data-icon-key", (d) => (d.iconKey as string) ?? "")
+    nodeEnter.attr("data-os-family", (d) => (d.osFamily as string) ?? "")
 
-    // Re-render existing nodes only when their iconKey changes (late enrichment)
+    // Re-render existing nodes when their iconKey or osFamily changes (late enrichment)
     nodeSelection.each(function (d) {
-      const prev = this.getAttribute("data-icon-key") ?? ""
-      const curr = (d.iconKey as string) ?? ""
-      if (prev !== curr) {
+      const prevIcon = this.getAttribute("data-icon-key") ?? ""
+      const currIcon = (d.iconKey as string) ?? ""
+      const prevOs = this.getAttribute("data-os-family") ?? ""
+      const currOs = (d.osFamily as string) ?? ""
+      if (prevIcon !== currIcon || prevOs !== currOs) {
         renderNode(d3.select<SVGGElement, SimNode>(this))
-        this.setAttribute("data-icon-key", curr)
+        this.setAttribute("data-icon-key", currIcon)
+        this.setAttribute("data-os-family", currOs)
       }
     })
 

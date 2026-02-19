@@ -15,6 +15,11 @@ const electronAPI = {
     getEvents: () => ipcRenderer.invoke('packet:get-events'),
   },
 
+  os: {
+    nmapScan: (ip: string) => ipcRenderer.invoke('os:nmap-scan', ip),
+    nmapStatus: () => ipcRenderer.invoke('os:nmap-status'),
+  },
+
   on: {
     scannerUpdate: (callback: (data: any) => void) => {
       const handler = (_: any, data: any) => callback(data);

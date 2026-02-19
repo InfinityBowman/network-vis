@@ -30,6 +30,13 @@ export class NetworkState {
     }
   }
 
+  /** Merge fields into an existing node without resetting lifecycle (lastSeen/status). */
+  patchNode(id: string, fields: Partial<NetworkNode>): void {
+    const existing = this.nodes.get(id);
+    if (!existing) return;
+    this.nodes.set(id, { ...existing, ...fields } as NetworkNode);
+  }
+
   upsertEdge(edge: NetworkEdge): void {
     this.edges.set(edge.id, edge);
   }

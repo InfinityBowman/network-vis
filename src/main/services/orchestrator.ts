@@ -9,6 +9,9 @@ import { ConnectionsScanner } from '../scanners/connections';
 import type { BaseScanner, ScanResult } from '../scanners/base';
 import { hostname, networkInterfaces } from 'os';
 import { DeviceFingerprinter } from '../fingerprinting/fingerprinter';
+import { OsEnricher } from '../fingerprinting/os-enricher';
+import { OsNmapScanner } from '../fingerprinting/nmap-scanner';
+import type { NmapScanResult } from '../types';
 import { PacketScanner } from '../scanners/packet';
 import { TopologyScanner } from '../scanners/topology';
 import { TrafficScanner } from '../scanners/traffic';
@@ -33,6 +36,8 @@ export class Orchestrator {
   private bonjour = new BonjourScanner();
   private connections = new ConnectionsScanner();
   private fingerprinter = new DeviceFingerprinter();
+  private osEnricher = new OsEnricher();
+  private nmapScanner = new OsNmapScanner();
   private packetScanner = new PacketScanner();
   private topology = new TopologyScanner();
   private traffic = new TrafficScanner();
@@ -264,15 +269,75 @@ export class Orchestrator {
     const allNodes = this.state.getNodes();
     const lanNodes = allNodes.filter((n): n is LanDeviceNode => n.signalType === 'lan');
     const bonjourNodes = allNodes.filter((n): n is BonjourServiceNode => n.signalType === 'bonjour');
-    if (lanNodes.length === 0) return;
 
-    const enriched = this.fingerprinter.enrich(lanNodes, bonjourNodes);
-    for (let i = 0; i < enriched.length; i++) {
-      // Only upsert nodes that were actually enriched (enrich returns same reference if unchanged)
-      if (enriched[i] !== lanNodes[i]) {
-        this.state.upsertNode(enriched[i]);
+    // Step 1: Device type fingerprinting (LAN nodes only)
+    if (lanNodes.length > 0) {
+      const enriched = this.fingerprinter.enrich(lanNodes, bonjourNodes);
+      for (let i = 0; i < enriched.length; i++) {
+        if (enriched[i] !== lanNodes[i]) {
+          this.state.upsertNode(enriched[i]);
+        }
       }
     }
+
+    // Step 2: OS fingerprinting (LAN + Bluetooth nodes)
+    // Uses patchNode() instead of upsertNode() to avoid resetting lastSeen/status,
+    // which would make fingerprinted nodes immortal (never transition to stale/expired).
+    const ttlsByIp = this.packetScanner.isCapturing
+      ? this.packetScanner.getTtlsByIp()
+      : new Map<string, number[]>();
+
+    const freshNodes = this.state.getNodes();
+    const osEnriched = this.osEnricher.enrich(freshNodes, ttlsByIp, bonjourNodes);
+    for (let i = 0; i < osEnriched.length; i++) {
+      if (osEnriched[i] !== freshNodes[i]) {
+        const enriched = osEnriched[i];
+        this.state.patchNode(enriched.id, {
+          osFamily: enriched.osFamily,
+          deviceCategory: enriched.deviceCategory,
+          osFingerprintConfidence: enriched.osFingerprintConfidence,
+        });
+      }
+    }
+  }
+
+  // === OS Fingerprinting (nmap) ===
+
+  async runNmapScan(ip: string): Promise<NmapScanResult> {
+    const node = this.state.getNodes().find(n => n.ip === ip);
+    if (!node) {
+      return { success: false, ip, error: 'Node not found for IP' };
+    }
+
+    const result = await this.nmapScanner.scan(ip);
+    if (!result) {
+      const available = await this.nmapScanner.checkAvailability();
+      return {
+        success: false,
+        ip,
+        error: available ? 'nmap scan returned no OS match (device may be firewalled)' : 'nmap not found. Install via: brew install nmap',
+      };
+    }
+
+    // Use patchNode to avoid overwriting fields that changed during the ~15s scan
+    this.state.patchNode(node.id, {
+      osFamily: result.osFamily,
+      osVersion: result.osVersion,
+      osFingerprintConfidence: result.confidence,
+    });
+    this.pushUpdate([]);
+
+    return {
+      success: true,
+      ip,
+      osFamily: result.osFamily,
+      osVersion: result.osVersion,
+      confidence: result.confidence,
+    };
+  }
+
+  async getNmapStatus(): Promise<{ available: boolean }> {
+    return { available: await this.nmapScanner.checkAvailability() };
   }
 
   private pushSubnetUpdate(): void {

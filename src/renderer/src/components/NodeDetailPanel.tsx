@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react"
 import type { NetworkNode, PacketEvent, PacketScannerStatus } from "@/types"
 import { SIGNAL_LABELS, getNodeColor } from "@/visualization/colors"
 import { getProtocolColor } from "@/visualization/protocol-colors"
-import { X, Radio, Shield, AlertTriangle } from "lucide-react"
+import { getOsFamilyColor } from "@/visualization/os-icons"
+import { X, Radio, Shield, AlertTriangle, Fingerprint, Loader2 } from "lucide-react"
 
 interface NodeDetailPanelProps {
   node: NetworkNode
@@ -65,6 +67,9 @@ export function NodeDetailPanel({
             <Row label="Signal" value={`${Math.round(node.signalStrength)}%`} />
           )}
         </section>
+
+        {/* OS Fingerprint */}
+        <OsFingerprintSection node={node} />
 
         {/* DPI Capture Controls */}
         <section className="p-4 border-b border-border">
@@ -195,6 +200,106 @@ export function NodeDetailPanel({
         )}
       </div>
     </div>
+  )
+}
+
+function OsFingerprintSection({ node }: { node: NetworkNode }) {
+  const [scanning, setScanning] = useState(false)
+  const [nmapAvailable, setNmapAvailable] = useState<boolean | null>(null)
+  const [nmapError, setNmapError] = useState<string | null>(null)
+
+  useEffect(() => {
+    window.electron.os.nmapStatus().then(s => setNmapAvailable(s.available))
+  }, [])
+
+  // Reset error state when selected node changes
+  useEffect(() => {
+    setNmapError(null)
+    setScanning(false)
+  }, [node.id])
+
+  const handleNmapScan = async () => {
+    if (!node.ip) return
+    setScanning(true)
+    setNmapError(null)
+    try {
+      const result = await window.electron.os.nmapScan(node.ip)
+      if (!result.success) {
+        setNmapError(result.error ?? 'Scan failed')
+      }
+    } catch (err) {
+      setNmapError('Failed to run nmap scan')
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const hasOs = node.osFamily && node.osFamily !== 'unknown'
+  const osColor = getOsFamilyColor(node.osFamily)
+
+  return (
+    <section className="p-4 border-b border-border space-y-2">
+      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+        <Fingerprint className="w-3 h-3" /> OS Fingerprint
+      </h3>
+      {hasOs ? (
+        <div className="space-y-1">
+          <div className="flex justify-between gap-4 text-xs">
+            <span className="text-muted-foreground">OS</span>
+            <span className="font-mono truncate" style={{ color: osColor }}>
+              {node.osFamily!.charAt(0).toUpperCase() + node.osFamily!.slice(1)}
+            </span>
+          </div>
+          {node.osVersion && <Row label="Version" value={node.osVersion} />}
+          {node.deviceCategory && node.deviceCategory !== 'unknown' && (
+            <Row label="Category" value={node.deviceCategory.charAt(0).toUpperCase() + node.deviceCategory.slice(1)} />
+          )}
+          {node.osFingerprintConfidence != null && (
+            <div>
+              <div className="flex justify-between text-xs mb-0.5">
+                <span className="text-muted-foreground">Confidence</span>
+                <span className="text-foreground font-mono">
+                  {Math.round(node.osFingerprintConfidence * 100)}%
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-muted">
+                <div
+                  className="h-1.5 rounded-full transition-all"
+                  style={{
+                    width: `${Math.round(node.osFingerprintConfidence * 100)}%`,
+                    backgroundColor: osColor,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-[10px] text-muted-foreground">
+          No OS detected yet. Start packet capture for TTL analysis, or scan with nmap.
+        </div>
+      )}
+      {node.ip && (
+        <button
+          onClick={handleNmapScan}
+          disabled={scanning || nmapAvailable === false}
+          className="mt-1 w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          {scanning ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <Fingerprint className="w-3 h-3" />
+          )}
+          {scanning ? 'Scanning...' : nmapAvailable === false ? 'nmap not installed' : 'Scan with nmap'}
+        </button>
+      )}
+      {nmapError && (
+        <div className="flex items-start gap-1.5 text-[10px] text-amber-400 bg-amber-500/10 rounded-md px-2 py-1.5">
+          <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+          <span>{nmapError}</span>
+        </div>
+      )}
+    </section>
   )
 }
 

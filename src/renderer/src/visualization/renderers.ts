@@ -2,6 +2,7 @@ import * as d3 from "d3"
 import type { SignalType } from "@/types"
 import { getNodeColor } from "./colors"
 import { getDeviceIconPath } from "./device-icons"
+import { getOsIconPath, getOsFamilyColor } from "./os-icons"
 import { getProtocolColor } from "./protocol-colors"
 
 export interface SimNode extends d3.SimulationNodeDatum {
@@ -105,6 +106,35 @@ export function renderNode(
           .attr("stroke-linejoin", "round")
           .attr("pointer-events", "none")
       }
+    }
+
+    // OS family badge — top-left corner (symmetric to device badge on top-right)
+    const osFamily = d.osFamily as string | undefined
+    const osIconPath = getOsIconPath(osFamily)
+    if (osIconPath) {
+      const osBadgeR = 7
+      const osBadgeX = -(r + 2)
+      const osBadgeY = -r * 0.5
+      const osColor = getOsFamilyColor(osFamily)
+
+      visual.append("circle")
+        .attr("cx", osBadgeX)
+        .attr("cy", osBadgeY)
+        .attr("r", osBadgeR)
+        .attr("fill", "#0f172a")
+        .attr("stroke", osColor)
+        .attr("stroke-width", 1)
+
+      visual.append("path")
+        .attr("d", osIconPath)
+        .attr(
+          "transform",
+          `translate(${osBadgeX - 5.5}, ${osBadgeY - 5.5}) scale(0.46)`
+        )
+        .attr("fill", osColor)
+        .attr("fill-opacity", 0.9)
+        .attr("stroke", "none")
+        .attr("pointer-events", "none")
     }
 
     // Protocol ring (DPI enrichment)

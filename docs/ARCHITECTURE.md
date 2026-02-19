@@ -61,7 +61,7 @@ Runs in Chromium. Responsible for:
 2. Scanner.scan() executes system command
 3. Scanner parses output → ScanResult { nodes[], edges[] }
 4. Orchestrator.applyResult() upserts nodes/edges into NetworkState
-5. Orchestrator.classify() runs DeviceFingerprinter on LAN nodes
+5. Orchestrator.classify() runs DeviceFingerprinter (device type) then OsEnricher (OS family) on LAN/Bluetooth nodes
 6. Orchestrator.enrichEdges()/enrichNodes() adds TrafficScanner bandwidth data at IPC boundary
 7. Orchestrator.pushUpdate() sends enriched ScannerUpdate to renderer
 8. Preload bridge forwards to event listeners
@@ -106,6 +106,8 @@ If any removals or status changes occurred, a `ScannerUpdate` is broadcast.
 | `packet:get-events` | Renderer → Main | On demand | — → `PacketEvent[]` |
 | `packet:event` | Main → Renderer | Per captured packet batch | `PacketEvent` |
 | `topology:update` | Main → Renderer | After topology scan + on window load | `SubnetInfo[]` |
+| `os:nmap-scan` | Renderer → Main | User clicks "Scan with nmap" | `ip: string` → `NmapScanResult` |
+| `os:nmap-status` | Renderer → Main | On detail panel mount | — → `{ available: boolean }` |
 
 ### Message Types
 
@@ -132,6 +134,7 @@ ScannerUpdate {
 
 In-memory `Map<string, NetworkNode>` and `Map<string, NetworkEdge>`. Methods:
 - `upsertNode(node)` — merge with existing, preserve `firstSeen`, update `lastSeen`, force `active`
+- `patchNode(id, fields)` — merge fields into existing node without resetting lifecycle (lastSeen/status). Used by OS enrichment and nmap scans to avoid making fingerprinted nodes immortal.
 - `upsertEdge(edge)` — simple set by ID
 - `removeEdgesForNode(nodeId)` — iterates all edges, removes those referencing the node
 - `tick()` — lifecycle transitions, returns `{ removed[], statusChanged }`
@@ -176,11 +179,11 @@ Production packaging: `electron-builder` produces a macOS `.app` to `release/`.
 
 3. **Full state on every update**: `ScannerUpdate` includes all current nodes/edges (not just deltas). This simplifies renderer reconciliation at the cost of slightly larger payloads. The `removed` array handles deletions.
 
-4. **Fingerprinting as post-processing**: Device classification runs after ARP/Bonjour scans, not inside scanners. This separates concerns and allows cross-referencing data from multiple scanners.
+4. **Fingerprinting as post-processing**: Device classification and OS fingerprinting run after ARP/Bonjour scans, not inside scanners. This separates concerns and allows cross-referencing data from multiple scanners. Device fingerprinting runs first (deviceType/iconKey), then OS enrichment runs second (osFamily/deviceCategory), using TTL data from PacketScanner when available.
 
 5. **Position preservation**: `useD3Simulation` maps existing D3 node positions by ID before rebuilding the simulation, preventing visual jumps on incremental updates.
 
-6. **Late re-rendering**: Nodes track `data-icon-key` and `data-protocols-hash` attributes. When fingerprinting or DPI enriches a node after initial render, the node shape/ring is re-rendered.
+6. **Late re-rendering**: Nodes track `data-icon-key`, `data-os-family`, and `data-protocols-hash` attributes. When fingerprinting, OS enrichment, or DPI enriches a node after initial render, the node shape/ring/badge is re-rendered.
 
 7. **Double-gate initialization**: Prevents empty state flash by waiting for both window load and initial scan completion.
 

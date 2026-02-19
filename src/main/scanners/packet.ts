@@ -22,6 +22,7 @@ const TSHARK_FIELDS = [
   '_ws.col.Protocol',
   'frame.len',
   '_ws.col.Info',
+  'ip.ttl',
 ];
 
 export class PacketScanner extends BaseScanner {
@@ -36,6 +37,9 @@ export class PacketScanner extends BaseScanner {
   private protocolsByIp = new Map<string, Record<string, number>>();
   private bytesByIp = new Map<string, number>();
   private packetsByIp = new Map<string, number>();
+
+  // TTL values per IP for OS fingerprinting (rolling window)
+  private ttlsByIp = new Map<string, number[]>();
 
   // IP → nodeId index for correlation
   private ipIndex = new Map<string, string>();
@@ -85,6 +89,10 @@ export class PacketScanner extends BaseScanner {
 
   getPacketsByIp(): Map<string, number> {
     return this.packetsByIp;
+  }
+
+  getTtlsByIp(): Map<string, number[]> {
+    return this.ttlsByIp;
   }
 
   getEvents(): PacketEvent[] {
@@ -263,9 +271,12 @@ export class PacketScanner extends BaseScanner {
 
   private parseLine(line: string): void {
     const parts = line.split('|');
-    if (parts.length < 7) return;
+    if (parts.length < 9) return;
 
-    const [tsRaw, srcIp4, dstIp4, srcIp6, dstIp6, protocol, lenRaw, ...infoParts] = parts;
+    // ip.ttl is always the last field; Info field may contain | separators
+    const [tsRaw, srcIp4, dstIp4, srcIp6, dstIp6, protocol, lenRaw, ...rest] = parts;
+    const ttlRaw = rest.pop() ?? '';
+    const info = rest.join('|').slice(0, 80);
 
     // Use IPv4 if present, fall back to IPv6
     const srcIp = srcIp4 || srcIp6;
@@ -275,7 +286,6 @@ export class PacketScanner extends BaseScanner {
     const ts = Math.round(parseFloat(tsRaw) * 1000) || Date.now();
     const len = parseInt(lenRaw) || 0;
     const proto = protocol?.trim() || 'Unknown';
-    const info = infoParts.join('|').slice(0, 80);
 
     // Correlate to node
     const srcNodeId = this.ipIndex.get(srcIp) ?? null;
@@ -308,6 +318,15 @@ export class PacketScanner extends BaseScanner {
       this.protocolsByIp.set(ip, protos);
       this.bytesByIp.set(ip, (this.bytesByIp.get(ip) ?? 0) + len);
       this.packetsByIp.set(ip, (this.packetsByIp.get(ip) ?? 0) + 1);
+    }
+
+    // TTL aggregation for OS fingerprinting (only the source IP's TTL is meaningful)
+    const ttl = parseInt(ttlRaw);
+    if (!isNaN(ttl) && ttl > 0 && srcIp && !this.thisDeviceIps.has(srcIp)) {
+      const ttls = this.ttlsByIp.get(srcIp) ?? [];
+      ttls.push(ttl);
+      if (ttls.length > 100) ttls.shift(); // rolling window
+      this.ttlsByIp.set(srcIp, ttls);
     }
   }
 

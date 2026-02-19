@@ -117,11 +117,12 @@ Renders a single `<svg>` element at 100% width/height with transparent backgroun
 **Sections** (top to bottom):
 1. **Header**: Node color dot, name, signal type label, close button
 2. **Basic info**: IP, MAC, status, signal strength
-3. **Packet capture controls**: Start/Stop button with capture status and error display
-4. **Traffic stats**: Total packets and bytes (shown when DPI data available)
-5. **Protocol breakdown**: Horizontal bar charts sorted by packet count (top 10). Each bar colored by protocol color map. Shows count and percentage.
-6. **Recent packets**: Last 50 packet events (reversed). Each shows protocol badge (colored), source→destination IPs, and byte length.
-7. **Empty state**: Prompt to start capture when no DPI data and capture is off.
+3. **OS Fingerprint**: Shows `osFamily` (colored by OS family color), `osVersion`, `deviceCategory`, confidence progress bar. Includes "Scan with nmap" button (checks nmap availability on mount, shows spinner while scanning, displays errors). Falls back to prompt text when no OS detected.
+4. **Packet capture controls**: Start/Stop button with capture status and error display
+5. **Traffic stats**: Total packets and bytes (shown when DPI data available)
+6. **Protocol breakdown**: Horizontal bar charts sorted by packet count (top 10). Each bar colored by protocol color map. Shows count and percentage.
+7. **Recent packets**: Last 50 packet events (reversed). Each shows protocol badge (colored), source→destination IPs, and byte length.
+8. **Empty state**: Prompt to start capture when no DPI data and capture is off.
 
 ### Legend (`components/Legend.tsx`)
 
@@ -249,6 +250,8 @@ Same base forces as force layout, minus center force, plus:
 | Wi-Fi, Bluetooth, Connection | Circle | Standard circle with glow filter on active |
 
 **Device icon badges** (LAN only): Small circle (r=8) at top-right corner with SVG path icon inside. 10 available icons from `visualization/device-icons.ts`.
+
+**OS family badges** (LAN + Bluetooth): Small circle (r=7) at top-left corner with OS logo icon inside (filled, not stroked). 5 OS families supported from `visualization/os-icons.ts`: `windows` (blue), `macos`/`ios` (gray), `linux` (yellow), `android` (green), `freebsd` (red). Only shown when `osFamily` is set and not `'unknown'`. Re-rendered when `data-os-family` attribute changes.
 
 **Protocol rings** (`renderProtocolRing`): Nodes with DPI protocol data get a colored donut ring around the shape. Built with `d3.arc()` and `d3.pie()`. Ring inner radius = nodeRadius + 4, outer = nodeRadius + 8. Each arc segment represents a protocol, colored via `protocol-colors.ts`. When updating existing nodes, the ring is inserted before the text label to maintain correct z-order.
 

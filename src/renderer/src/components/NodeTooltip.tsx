@@ -71,6 +71,15 @@ function getDetails(node: NetworkNode): [string, string][] {
       break
   }
 
+  // OS fingerprint (available on any node type)
+  if (node.osFamily && node.osFamily !== 'unknown') {
+    details.push(["OS", node.osFamily.charAt(0).toUpperCase() + node.osFamily.slice(1)])
+    if (node.osVersion) details.push(["OS Version", node.osVersion])
+    if (node.deviceCategory && node.deviceCategory !== 'unknown') {
+      details.push(["Category", node.deviceCategory.charAt(0).toUpperCase() + node.deviceCategory.slice(1)])
+    }
+  }
+
   details.push(["First Seen", formatTime(node.firstSeen)])
   details.push(["Last Seen", formatTime(node.lastSeen)])
 

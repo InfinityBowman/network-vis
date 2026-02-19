@@ -16,6 +16,10 @@ declare global {
         status: () => Promise<import("@/types").PacketScannerStatus>
         getEvents: () => Promise<import("@/types").PacketEvent[]>
       }
+      os: {
+        nmapScan: (ip: string) => Promise<import("@/types").NmapScanResult>
+        nmapStatus: () => Promise<{ available: boolean }>
+      }
       on: {
         scannerUpdate: (cb: (data: any) => void) => () => void
         scannerFullState: (cb: (data: any) => void) => () => void

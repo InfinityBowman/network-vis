@@ -246,7 +246,10 @@ Each profile specifies matching criteria (vendor patterns, service types, hostna
 | `ip.dst` | Destination IPv4 address |
 | `_ws.col.Protocol` | Dissected protocol name |
 | `frame.len` | Frame length in bytes |
+| `ipv6.src` | Source IPv6 address |
+| `ipv6.dst` | Destination IPv6 address |
 | `_ws.col.Info` | Info column (truncated to 80 chars) |
+| `ip.ttl` | IP Time-To-Live value (used for OS fingerprinting) |
 
 ### Protocol Color Map
 
@@ -330,6 +333,40 @@ Bandwidth data is **not** stored in the state manager's edges (which would be ov
 - `enrichNodes()`: Maps over nodes, looks up node ID in `traffic.getRates()`, spreads rate data onto matching connection nodes.
 
 This avoids race conditions and keeps the state manager clean.
+
+---
+
+## OS Fingerprinting
+
+### Passive OS Enrichment
+
+**File**: `src/main/fingerprinting/os-enricher.ts`
+**Engine**: `src/main/fingerprinting/os-engine.ts`
+**Profiles**: `src/data/os-profiles.json` (6 OS family profiles)
+
+The `OsEnricher` runs as part of `Orchestrator.classify()` after device fingerprinting. It gathers OS signals from multiple sources and uses the `OsFingerprintEngine` to pick the best match above a 0.45 confidence threshold.
+
+**Signal sources and confidence weights**:
+| Source | Confidence | Notes |
+|---|---|---|
+| TTL | 0.3 | Low — TTL=64 shared by macOS/iOS/Linux/Android |
+| OUI vendor | 0.4 | Apple vendor → macOS/iOS, Microsoft → Windows |
+| Hostname | 0.5 | Regex patterns (e.g., `iPhone`, `DESKTOP-`, `Galaxy`) |
+| Bonjour | 0.5 | Service types (e.g., `_companion-link._tcp` → iOS) |
+| Bluetooth name | 0.5 | Device name patterns |
+| nmap | 0.9 | Active scan — high confidence, overrides passive |
+
+The engine sums confidence per OS family and picks the winner. Nodes with existing `osFingerprintConfidence >= 0.85` (e.g., from nmap) are not overwritten by passive signals.
+
+**TTL data flow**: PacketScanner extracts `ip.ttl` from each captured packet, aggregating into a rolling 100-sample window per source IP via `ttlsByIp`. The OsEnricher uses the median TTL to match against profile TTL ranges (e.g., Windows 118-128, Linux/macOS 58-64).
+
+### Active OS Scanning (nmap)
+
+**File**: `src/main/fingerprinting/nmap-scanner.ts`
+**System command**: `nmap -O --osscan-guess -T4 --max-os-tries 1 -n <ip>`
+**Timeout**: 15 seconds (SIGTERM → SIGKILL escalation)
+
+On-demand scanning triggered via the `os:nmap-scan` IPC channel when the user clicks "Scan with nmap" in the NodeDetailPanel. Parses `OS details:` and `Running:` lines from nmap stdout, extracts OS family and confidence percentage. Requires nmap installed (`brew install nmap`). OS detection (`-O`) may require root privileges.
 
 ---
 

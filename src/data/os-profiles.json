@@ -1,0 +1,53 @@
+[
+  {
+    "id": "windows",
+    "osFamily": "windows",
+    "ttlRange": [118, 128],
+    "ouiPatterns": ["Microsoft"],
+    "hostnamePatterns": ["^DESKTOP-", "^LAPTOP-", "^WIN-", "-PC$"],
+    "nmapOsPatterns": ["Windows"]
+  },
+  {
+    "id": "macos",
+    "osFamily": "macos",
+    "ttlRange": [58, 64],
+    "ouiPatterns": ["Apple"],
+    "hostnamePatterns": ["MacBook", "iMac", "Mac-Mini", "Mac-Pro", "Mac-Studio", "Macintosh"],
+    "bonjourServiceTypes": ["_device-info._tcp"],
+    "nmapOsPatterns": ["Mac OS X", "macOS"]
+  },
+  {
+    "id": "ios",
+    "osFamily": "ios",
+    "ttlRange": [58, 64],
+    "ouiPatterns": ["Apple"],
+    "hostnamePatterns": ["iPhone", "iPad", "iPod"],
+    "bonjourServiceTypes": ["_companion-link._tcp", "_apple-mobdev2._tcp"],
+    "bluetoothNamePatterns": ["iPhone", "iPad", "iPod"],
+    "nmapOsPatterns": ["iOS", "iPhone OS"]
+  },
+  {
+    "id": "linux",
+    "osFamily": "linux",
+    "ttlRange": [58, 64],
+    "hostnamePatterns": ["ubuntu", "debian", "fedora", "centos", "arch", "raspberrypi", "raspberry"],
+    "bonjourServiceTypes": ["_workstation._tcp"],
+    "nmapOsPatterns": ["Linux"]
+  },
+  {
+    "id": "android",
+    "osFamily": "android",
+    "ttlRange": [58, 64],
+    "ouiPatterns": ["Samsung", "OnePlus", "Xiaomi", "Huawei", "Motorola", "OPPO", "Vivo"],
+    "hostnamePatterns": ["android", "pixel", "galaxy", "oneplus", "redmi"],
+    "bluetoothNamePatterns": ["Pixel", "Galaxy", "OnePlus", "Redmi", "SAMSUNG", "Moto"],
+    "nmapOsPatterns": ["Android"]
+  },
+  {
+    "id": "freebsd",
+    "osFamily": "freebsd",
+    "ttlRange": [58, 64],
+    "hostnamePatterns": ["freebsd", "pfsense", "opnsense", "truenas"],
+    "nmapOsPatterns": ["FreeBSD"]
+  }
+]
