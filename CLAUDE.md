@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Network Vis is a native macOS Electron app that visualizes real-time network signals. It discovers Wi-Fi, LAN, Bluetooth, Bonjour, and active connection data via system commands, and renders an interactive D3 force graph. As a proper `.app` bundle it can request Location Services permission for real Wi-Fi SSID names.
+NetRadar is a native macOS Electron app that visualizes real-time network signals. It discovers Wi-Fi, LAN, Bluetooth, Bonjour, and active connection data via system commands, and renders an interactive D3 force graph. As a proper `.app` bundle it can request Location Services permission for real Wi-Fi SSID names.
 
 ## Commands
 

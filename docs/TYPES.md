@@ -1,4 +1,4 @@
-# Network Vis - Type Specification
+# NetRadar - Type Specification
 
 Canonical types are defined in `src/main/types.ts` and duplicated in `src/renderer/src/types.ts`. These files **must be kept in sync**.
 

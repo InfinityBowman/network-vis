@@ -1,8 +1,8 @@
-# Network Vis - Product Specification
+# NetRadar - Product Specification
 
 ## Overview
 
-Network Vis is a native macOS Electron application that discovers and visualizes real-time network signals as an interactive force-directed graph. It scans Wi-Fi access points, LAN devices (via ARP), Bluetooth peripherals, Bonjour/mDNS services, and active TCP/UDP connections, rendering them in a D3-powered SVG canvas with a React UI chrome layer.
+NetRadar is a native macOS Electron application that discovers and visualizes real-time network signals as an interactive force-directed graph. It scans Wi-Fi access points, LAN devices (via ARP), Bluetooth peripherals, Bonjour/mDNS services, and active TCP/UDP connections, rendering them in a D3-powered SVG canvas with a React UI chrome layer.
 
 The app is distributed as a `.app` bundle and requests macOS Location Services permission to resolve real Wi-Fi SSID names (which macOS redacts without location authorization).
 

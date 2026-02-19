@@ -1,4 +1,4 @@
-# Network Vis - Signal Landscape Explorer
+# NetRadar - Signal Landscape Explorer
 
 A native macOS Electron app that visualizes all network signals around your Mac in real time: Wi-Fi access points, LAN devices, Bluetooth devices, Bonjour/mDNS services, and active connections. An interactive "radar" of your electromagnetic/network environment.
 

@@ -1,4 +1,4 @@
-// Shared types (mirrored from @network-vis/shared for client use)
+// Shared types (mirrored from main process for client use)
 
 export type SignalType = 'this_device' | 'wifi' | 'lan' | 'bluetooth' | 'bonjour' | 'connection';
 export type NodeStatus = 'active' | 'stale' | 'expired';

@@ -1,4 +1,4 @@
-# Network Vis - Scanner Specification
+# NetRadar - Scanner Specification
 
 ## Overview
 

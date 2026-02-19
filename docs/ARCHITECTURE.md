@@ -1,8 +1,8 @@
-# Network Vis - Architecture Specification
+# NetRadar - Architecture Specification
 
 ## Process Model
 
-Network Vis uses Electron's three-process architecture with strict isolation:
+NetRadar uses Electron's three-process architecture with strict isolation:
 
 ```
 ┌─────────────────────────────┐   ┌──────────────┐   ┌─────────────────────────────┐

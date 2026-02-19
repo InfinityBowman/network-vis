@@ -1,5 +1,5 @@
 {
-  "name": "network-vis",
+  "name": "netradar",
   "version": "0.1.0",
   "description": "Real-time network signal visualization for macOS",
   "private": true,
@@ -11,7 +11,7 @@
     "build": "pnpm run build-oui && electron-vite build",
     "preview": "electron-vite preview",
     "dist": "pnpm run build && electron-builder",
-    "install-app": "pnpm run dist && rm -rf /Applications/NetworkVis.app && cp -R release/mac-arm64/NetworkVis.app /Applications/NetworkVis.app && echo 'NetworkVis installed to /Applications'",
+    "install-app": "pnpm run dist && rm -rf /Applications/NetRadar.app && cp -R release/mac-arm64/NetRadar.app /Applications/NetRadar.app && echo 'NetRadar installed to /Applications'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -30,8 +30,8 @@
     "tw-animate-css": "^1.4.0"
   },
   "build": {
-    "appId": "com.networkvis.app",
-    "productName": "NetworkVis",
+    "appId": "com.netradar.app",
+    "productName": "NetRadar",
     "directories": {
       "buildResources": "build",
       "output": "release"
@@ -41,7 +41,7 @@
       "category": "public.app-category.utilities",
       "target": "dir",
       "extendInfo": {
-        "NSLocationWhenInUseUsageDescription": "NetworkVis needs location access to read Wi-Fi SSID names."
+        "NSLocationWhenInUseUsageDescription": "NetRadar needs location access to read Wi-Fi SSID names."
       }
     },
     "files": [

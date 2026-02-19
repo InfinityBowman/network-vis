@@ -1,4 +1,4 @@
-# Network Vis - UI & Renderer Specification
+# NetRadar - UI & Renderer Specification
 
 ## Overview
 

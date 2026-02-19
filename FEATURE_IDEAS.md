@@ -1,6 +1,6 @@
-# Feature Ideas for Network Vis
+# Feature Ideas for NetRadar
 
-A living document of ambitious feature ideas for Network Vis, the macOS Electron app that visualizes real-time network signals as an interactive D3 force graph. Each feature is grounded in the existing architecture: Electron main process running macOS system commands via `execFile`, a `BaseScanner` plugin system, D3-powered SVG rendering, and IPC-based state updates to a React/TypeScript renderer.
+A living document of ambitious feature ideas for NetRadar, the macOS Electron app that visualizes real-time network signals as an interactive D3 force graph. Each feature is grounded in the existing architecture: Electron main process running macOS system commands via `execFile`, a `BaseScanner` plugin system, D3-powered SVG rendering, and IPC-based state updates to a React/TypeScript renderer.
 
 ---
 
@@ -58,7 +58,7 @@ This converts an informational graph into something genuinely mesmerizing. It an
 
 ### Description
 
-Capture live packets on the network interface and classify them by protocol (HTTP, HTTPS/TLS, DNS, DHCP, SSH, MQTT, CoAP, etc.). Display protocol breakdowns per device as colored rings around nodes, and surface interesting payloads: DNS queries, HTTP hostnames from SNI, mDNS announcements, DHCP negotiations. This turns Network Vis into a lightweight Wireshark with a beautiful graph interface.
+Capture live packets on the network interface and classify them by protocol (HTTP, HTTPS/TLS, DNS, DHCP, SSH, MQTT, CoAP, etc.). Display protocol breakdowns per device as colored rings around nodes, and surface interesting payloads: DNS queries, HTTP hostnames from SNI, mDNS announcements, DHCP negotiations. This turns NetRadar into a lightweight Wireshark with a beautiful graph interface.
 
 ### Why It's Cool
 
@@ -190,7 +190,7 @@ A multi-layered security monitor that detects common network attacks and suspici
 
 ### Why It's Cool
 
-This turns Network Vis from a passive observer into an active guardian. Most home users have zero visibility into network attacks. Seeing a red pulsing node with the label "POSSIBLE ARP SPOOF: two devices claim to be your gateway" is both alarming and actionable.
+This turns NetRadar from a passive observer into an active guardian. Most home users have zero visibility into network attacks. Seeing a red pulsing node with the label "POSSIBLE ARP SPOOF: two devices claim to be your gateway" is both alarming and actionable.
 
 ### Technical Approach
 
@@ -379,7 +379,7 @@ Visualization is powerful, but sometimes you need to share what you see with som
 - **SVG export**: The graph is already rendered as SVG in the `NetworkCanvas` component. Use `XMLSerializer` to serialize the SVG DOM, inject inline styles (since CSS won't travel with the file), and trigger a download via Electron's `dialog.showSaveDialog()` + `fs.writeFile()`.
 - **PNG export**: Use the `canvas` element approach: draw the SVG to a `<canvas>` via `canvg` or `Image` + `canvas.drawImage()`, then `canvas.toBlob('image/png')`. Or use Electron's `webContents.capturePage()` for a quick screenshot of the entire window.
 - **PDF report**: Use the `pdfkit` npm package in the main process. Programmatically build a report with sections: Network Overview (device count, topology summary), Device Inventory (table of all nodes with type, IP, MAC, vendor, OS, first/last seen), Security Findings (from Feature 6), Traffic Summary (if Feature 1 is implemented). Embed the graph SVG as a vector image.
-- **Snapshot save/load**: Serialize `ScannerFullState` to JSON. Save to `~/Documents/NetworkVis/snapshots/` with a timestamp filename. Load replays the saved state into the renderer. Add a "Compare" mode that overlays two snapshots with additions in green and removals in red.
+- **Snapshot save/load**: Serialize `ScannerFullState` to JSON. Save to `~/Documents/NetRadar/snapshots/` with a timestamp filename. Load replays the saved state into the renderer. Add a "Compare" mode that overlays two snapshots with additions in green and removals in red.
 - **IPC**: New handlers: `export:svg`, `export:png`, `export:pdf`, `snapshot:save`, `snapshot:load`, `snapshot:list`.
 
 ### Complexity
@@ -402,7 +402,7 @@ Right-click any LAN device on the graph and interact with it: send a Wake-on-LAN
 
 ### Why It's Cool
 
-The graph already shows you every device. Being able to act on them without switching to Terminal or another app makes Network Vis a genuine network tool rather than just eye candy. Wake-on-LAN is especially useful -- wake your NAS or media server with one click from a beautiful graph.
+The graph already shows you every device. Being able to act on them without switching to Terminal or another app makes NetRadar a genuine network tool rather than just eye candy. Wake-on-LAN is especially useful -- wake your NAS or media server with one click from a beautiful graph.
 
 ### Technical Approach
 
